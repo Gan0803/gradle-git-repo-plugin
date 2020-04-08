@@ -1,4 +1,4 @@
-package com.github.unafraid.gradle
+package com.github.gan0803.gradle
 
 import org.ajoberstar.grgit.Grgit
 import org.gradle.api.Plugin
@@ -23,7 +23,7 @@ class GitRepoPlugin implements Plugin<Project> {
             project.repositories.metaClass.github = { String org, String repo, String upstream = "origin", String branch = "master", String type = "releases", def closure = null ->
                 String gitUrl = "git@github.com:${org}/${repo}.git"
                 def orgDir = repositoryDir(project, org)
-                addLocalRepo(project, ensureLocalRepo(project, orgDir, repo, gitUrl, upstream, branch), type)
+                addLocalRepo(project, ensureLocalRepo(project, orgDir, repo, gitUrl, /*upstream,*/ branch), type)
             }
         }
 
@@ -31,14 +31,14 @@ class GitRepoPlugin implements Plugin<Project> {
             project.repositories.metaClass.bitbucket = { String org, String repo, String upstream = "origin", String branch = "master", String type = "releases", def closure = null ->
                 String gitUrl = "git@bitbucket.org:${org}/${repo}.git"
                 def orgDir = repositoryDir(project, org)
-                addLocalRepo(project, ensureLocalRepo(project, orgDir, repo, gitUrl, upstream, branch), type)
+                addLocalRepo(project, ensureLocalRepo(project, orgDir, repo, gitUrl, /*upstream,*/ branch), type)
             }
         }
 
         if (!project.repositories.metaClass.respondsTo(project.repositories, 'git', String, String, String, String, String, Object)) {
             project.repositories.metaClass.git = { String gitUrl, String name, String upstream = "origin", String branch = "master", String type = "releases", def closure = null ->
                 def orgDir = repositoryDir(project, name)
-                addLocalRepo(project, ensureLocalRepo(project, orgDir, name, gitUrl, upstream, branch), type)
+                addLocalRepo(project, ensureLocalRepo(project, orgDir, name, gitUrl, /*upstream,*/ branch), type)
             }
         }
 
@@ -52,7 +52,7 @@ class GitRepoPlugin implements Plugin<Project> {
                             repositoryDir(project, project.gitPublishConfig.org),
                             project.gitPublishConfig.repo,
                             gitCloneUrl(project),
-                            project.gitPublishConfig.upstream,
+//                            project.gitPublishConfig.upstream,
                             project.gitPublishConfig.branch)
                 }
                 publishTask(project).dependsOn(cloneRepo)
@@ -100,38 +100,63 @@ class GitRepoPlugin implements Plugin<Project> {
         }
     }
 
-    private static File ensureLocalRepo(Project project, File directory, String name, String gitUrl, String upstream, String branch) {
-        if (project.gitPublishConfig.useCache) {
-            def cacheKey = "${directory.path}:${name}:${gitUrl}:${branch}"
-            if (repoCache.containsKey(cacheKey)) {
-                return repoCache[cacheKey]
-            }
-        }
+//    private static File ensureLocalRepo(Project project, File directory, String name, String gitUrl, String upstream, String branch) {
+//        if (project.gitPublishConfig.useCache) {
+//            def cacheKey = "${directory.path}:${name}:${gitUrl}:${branch}"
+//            if (repoCache.containsKey(cacheKey)) {
+//                return repoCache[cacheKey]
+//            }
+//        }
+//
+//        def repoDir = new File(directory, name)
+//        def gitRepo
+//
+//        if (repoDir.directory || project.hasProperty("offline")) {
+//            gitRepo = Grgit.open(dir: repoDir)
+//        } else {
+//            gitRepo = Grgit.clone(dir: repoDir, uri: gitUrl)
+//        }
+//
+//        if (!project.hasProperty("offline")) {
+//            println(gitRepo.branch.list())
+//            if (gitRepo.branch.list().find { it.name == branch }) {
+//                gitRepo.checkout(branch: branch)
+//            } else {
+//                gitRepo.checkout(branch: branch, startPoint: upstream + '/' + branch, createBranch: true)
+//            }
+//            gitRepo.pull()
+//        }
+//
+//        if (project.gitPublishConfig.useCache) {
+//            def cacheKey = "${directory.path}:${name}:${gitUrl}:${branch}"
+//            repoCache[cacheKey] = repoDir
+//        }
+//
+//        return repoDir
+//    }
 
+    private static File ensureLocalRepo(Project project, File directory, String name, String gitUrl, String branch) {
         def repoDir = new File(directory, name)
-        def gitRepo
-
-        if (repoDir.directory || project.hasProperty("offline")) {
-            gitRepo = Grgit.open(dir: repoDir)
-        } else {
-            gitRepo = Grgit.clone(dir: repoDir, uri: gitUrl)
-        }
-
-        if (!project.hasProperty("offline")) {
-            if (gitRepo.branch.list().find { it.name == branch }) {
-                gitRepo.checkout(branch: branch)
-            } else {
-                gitRepo.checkout(branch: branch, startPoint: upstream + '/' + branch, createBranch: true)
+        if (!repoDir.directory) {
+            project.mkdir(directory)
+            project.logger.info("git clone ${gitUrl} ${name}")
+            project.exec {
+                workingDir directory
+                executable "git"
+                args "clone", gitUrl, name
             }
-            gitRepo.pull()
         }
-
-        if (project.gitPublishConfig.useCache) {
-            def cacheKey = "${directory.path}:${name}:${gitUrl}:${branch}"
-            repoCache[cacheKey] = repoDir
+        project.exec {
+            workingDir repoDir
+            executable "git"
+            args "checkout", branch
         }
-
-        return repoDir
+        project.exec {
+            workingDir repoDir
+            executable "git"
+            args "pull"
+        }
+        return repoDir;
     }
 
     private static void addLocalRepo(Project project, File repoDir, String type) {
@@ -142,8 +167,8 @@ class GitRepoPlugin implements Plugin<Project> {
 }
 
 class GitPublishConfig {
-    String org = ""
-    String repo = ""
+    String org = "gan0803"
+    String repo = "gradle-git-repo-plugin"
     String provider = "github.com" //github.com, gitlab or others
     String gitUrl = "" //used to replace git@${provider}:${org}/${repo}.git
     String home = "${System.properties['user.home']}/.gitRepos"

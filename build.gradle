@@ -11,10 +11,11 @@ buildscript {
 
 apply plugin: "groovy"
 apply plugin: "com.gradle.plugin-publish"
+apply plugin: "maven"
 
 sourceCompatibility = 1.7
-group = "com.github.unafraid.gradle"
-version = "2.0.4.1"
+group = "com.github.gan0803.gradle"
+version = "1.0.0"
 
 repositories {
 	mavenCentral()
@@ -45,17 +46,29 @@ task wrapper(type: Wrapper) {
 	gradleVersion = "4.5.1"
 }
 
-
 pluginBundle {
-	website = "https://github.com/UnAfraid/gradle-git-repo-plugin"
-	vcsUrl = "https://github.com/UnAfraid/gradle-git-repo-plugin"
+	website = "https://github.com/Gan0803/gradle-git-repo-plugin"
+	vcsUrl = "https://github.com/Gan0803/gradle-git-repo-plugin"
 	description = "Use a git repo as a maven-style repo"
 	tags = ["git", "maven", "repository"]
 
 	plugins {
 		greetingsPlugin {
-			id = "com.github.unafraid.gradle.git-repo-plugin"
+			id = "com.github.gan0803.gradle.git-repo-plugin"
 			displayName = "Gradle git repository plugin"
+		}
+	}
+}
+
+def repo = new File(rootDir, "releases")
+
+uploadArchives {
+	repositories {
+		mavenDeployer {
+			repository url: "file://${repo.absolutePath}"
+			pom.version = "${version}"
+			pom.groupId = "${project.group}"
+			pom.artifactId = "gradle-git-repo-plugin"
 		}
 	}
 }
